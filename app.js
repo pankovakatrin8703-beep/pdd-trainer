@@ -1,0 +1,82 @@
+const KEY="pdd-trainer-mvp-v1";
+const topics=[
+["general","Общие положения","Базовые термины и обязанности","📘"],
+["signs","Дорожные знаки","Распознавание и применение знаков","🚸"],
+["markings","Дорожная разметка","Линии, стрелки и обозначения","🛣️"],
+["lights","Светофор и регулировщик","Сигналы и порядок действий","🚦"],
+["maneuver","Маневрирование","Начало движения, перестроение, повороты","↪️"],
+["speed","Скорость","Ограничения и безопасная скорость","⚡"],
+["overtake","Обгон","Правила и запреты","🚗"],
+["stop","Остановка и стоянка","Где и как можно остановиться","🅿️"],
+["cross","Перекрёстки","Приоритет и очередность проезда","✚"],
+["pedestrian","Пешеходы","Переходы и взаимодействие","🚶"],
+["rail","Ж/д переезды","Безопасность на переездах","🚆"],
+["special","Особые условия","Спецсигналы, буксировка и др.","⚠️"]
+];
+const LEGAL_BASE={country:"Россия",document:"Постановление Правительства РФ от 23.10.1993 № 1090 «О Правилах дорожного движения»",edition:"28.08.2026",validThrough:"01.03.2029",source:"https://www.consultant.ru/document/cons_doc_LAW_2709/"};
+const questions=[
+{id:1,topic:"signs",q:"Что является основной задачей дорожных знаков?",a:["Информировать и регулировать участников движения","Определять марку автомобиля","Устанавливать цену топлива"],c:0,e:"В демонстрационной базе знак используется как средство организации и информирования участников движения.",rule:"ДЕМО / ПДД РФ: требуется привязка к конкретному пункту и редакции",d:1},
+{id:2,topic:"lights",q:"Какой сигнал светофора в этой демо-вопросной базе разрешает движение?",a:["Красный","Зелёный","Жёлтый мигающий"],c:1,e:"В учебной демонстрации зелёный сигнал означает разрешение движения. Для экзаменационной базы вопрос должен хранить конкретный пункт ПДД РФ и редакцию документа.",rule:"ДЕМО / ПДД РФ: требуется привязка к конкретному пункту и редакции",d:1},
+{id:3,topic:"markings",q:"Для чего в принципе используется дорожная разметка?",a:["Для обозначения элементов дороги и организации движения","Только для украшения дороги","Для определения мощности автомобиля"],c:0,e:"Разметка помогает обозначать границы, направления и иные элементы организации движения.",rule:"ДЕМО / ПДД РФ: требуется привязка к конкретному пункту и редакции",d:1},
+{id:4,topic:"cross",q:"Что следует сделать перед проездом перекрёстка?",a:["Оценить дорожную обстановку и приоритет","Всегда ускориться","Закрыть обзор"],c:0,e:"Сначала оценивают сигналы, знаки, разметку, траектории и приоритет. Конкретный порядок зависит от ситуации.",rule:"ДЕМО / ПДД РФ: требуется привязка к конкретному пункту и редакции",d:2},
+{id:5,topic:"speed",q:"Что означает адаптация скорости к обстановке?",a:["Выбор скорости с учётом дорожных и видимых условий","Всегда ехать с максимально разрешённой скоростью","Всегда ехать на минимальной скорости"],c:0,e:"Скорость должна соответствовать конкретной дорожной ситуации; в реальной базе необходимо привязать объяснение к актуальному законодательству страны.",rule:"ДЕМО / ПДД РФ: требуется привязка к конкретному пункту и редакции",d:2},
+{id:6,topic:"pedestrian",q:"Что важно учитывать при приближении к зоне движения пешеходов?",a:["Пешеходов и возможность их появления на траектории","Только цвет автомобиля впереди","Только расход топлива"],c:0,e:"В учебной логике прежде всего оценивают наличие и возможное движение пешеходов.",rule:"ДЕМО / ПДД РФ: требуется привязка к конкретному пункту и редакции",d:1}
+];
+
+function fresh(){return {onboard:false,country:"Россия",level:null,examDate:null,nav:"home",answered:{},mistakes:[],reviews:[],streak:0,total:0,correct:0,goal:20,flashIndex:0}}
+let S=JSON.parse(localStorage.getItem(KEY)||"null")||fresh();
+function save(){localStorage.setItem(KEY,JSON.stringify(S))}
+function pct(){return S.total?Math.round(S.correct/S.total*100):0}
+function esc(x){return String(x).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
+function render(){document.getElementById("app").innerHTML=S.onboard?main():onboarding()}
+function onboarding(){
+return `<div class="onboard"><div class="card"><div class="badge">ПДД TRAINER · РОССИЯ</div>
+<h1 class="h1">Научись понимать ПДД, а не просто угадывать ответы</h1>
+<p class="muted">Персональный цикл: изучение → практика → ошибка → объяснение → повторение → закрепление.</p>
+${S.country===null?`<h2 class="h2">1. Страна</h2><div class="card" style="margin:0 0 12px"><b>Россия</b><p class="small muted">Используется российская редакция ПДД. Источник: Постановление Правительства РФ от 23.10.1993 № 1090.</p><a href="https://www.consultant.ru/document/cons_doc_LAW_2709/" target="_blank" rel="noopener">Открыть актуальный текст ПДД</a></div><button class="btn" onclick="pickCountry('Россия')">Продолжить с ПДД России</button>`:
+S.level===null?`<h2 class="h2">2. Уровень знаний</h2><div class="stack">${["Я ничего не знаю","Знаю основы","Уже изучаю ПДД","Готовлюсь к экзамену"].map(x=>`<button class="choice" onclick="pickLevel('${x}')">${x}</button>`).join("")}</div>`:
+`<h2 class="h2">3. Дата экзамена</h2><p class="muted">Можно пропустить и добавить позже.</p><input id="date" type="date" style="width:100%;padding:14px;border:1px solid #ddd;border-radius:12px"><div class="row" style="margin-top:12px"><button class="btn secondary" onclick="finishOnboard()">Пока не знаю</button><button class="btn" onclick="finishOnboard(true)">Продолжить</button></div>`}</div></div>`}
+function pickCountry(x){S.country=x;save();render()}
+function pickLevel(x){S.level=x;save();render()}
+function finishOnboard(withDate=false){if(withDate)S.examDate=document.getElementById("date").value||null;S.onboard=true;save();render()}
+
+function shell(content){
+return `<div class="app"><div class="top"><div class="container"><div class="brand">ПДД Trainer</div><div class="small muted">${esc(S.country)} · ${esc(S.level)}</div></div></div><main class="container">${content}</main>
+<nav class="nav">${[["home","⌂","Главная"],["study","📚","Учёба"],["train","🎯","Тренировка"],["exam","⏱️","Экзамен"],["profile","◉","Профиль"]].map(n=>`<button class="${S.nav===n[0]?"active":""}" onclick="go('${n[0]}')">${n[1]}<br>${n[2]}</button>`).join("")}</nav></div>`}
+function go(n){S.nav=n;save();render()}
+function home(){
+let due=S.reviews.filter(x=>x<=Date.now()).length, weak=topics.map(t=>({t,score:topicScore(t[0])})).sort((a,b)=>a.score-b.score)[0];
+return shell(`<section class="hero"><div class="muted">Персональный тренажёр</div><div class="h1">Продолжим обучение?</div><p>Сегодня: ${Math.min(S.goal,S.total% (S.goal+1))} / ${S.goal} вопросов</p><button class="btn" onclick="startTrain(10)">Продолжить обучение</button></section>
+<div class="stats"><div class="stat"><span class="muted">Прогресс</span><b>${pct()}%</b></div><div class="stat"><span class="muted">Решено</span><b>${S.total}</b></div><div class="stat"><span class="muted">Правильно</span><b>${S.correct}</b></div><div class="stat"><span class="muted">Серия</span><b>${S.streak}</b></div></div>
+<div class="card"><div class="row"><div><div class="h2">Повторение</div><div class="muted">${due} вопросов ждут повторения</div></div><button class="btn secondary" onclick="startMistakes()">Повторить</button></div></div>
+<div class="card"><div class="h2">Слабая тема</div><div class="topic"><div class="icon">${weak.t[3]}</div><div style="flex:1"><b>${weak.t[1]}</b><div class="progress"><i style="width:${weak.score}%"></i></div><div class="small muted">${weak.score}% правильных</div></div><button class="btn secondary" onclick="startTopic('${weak.t[0]}')">Тренировать</button></div></div>`)}
+function topicScore(id){let arr=Object.values(S.answered).filter(x=>x.topic===id);return arr.length?Math.round(arr.filter(x=>x.correct).length/arr.length*100):0}
+function study(){return shell(`<div class="h1">Учёба</div><p class="muted">Изучай тему, затем закрепляй её разными ситуациями.</p>${topics.map(t=>`<div class="card topic"><div class="icon">${t[3]}</div><div style="flex:1"><b>${t[1]}</b><div class="small muted">${t[2]}</div><div class="progress" style="margin-top:8px"><i style="width:${topicScore(t[0])}%"></i></div><div class="small muted">${topicScore(t[0])}%</div></div><button class="btn secondary" onclick="studyTopic('${t[0]}')">Открыть</button></div>`).join("")}`)}
+function studyTopic(id){let t=topics.find(x=>x[0]===id);S.nav="topic:"+id;render()}
+function topicPage(id){let t=topics.find(x=>x[0]===id);return shell(`<div class="card"><div class="badge">${t[3]} Тема</div><div class="h1">${t[1]}</div><p>${t[2]}</p><h2 class="h2">Ключевые пункты</h2><ul><li>Определи участников и дорожную обстановку.</li><li>Найди знаки, разметку и сигналы.</li><li>Определи приоритет и безопасную последовательность действий.</li></ul><h2 class="h2">Мини-тест</h2><button class="btn" onclick="startTopic('${id}')">Решить вопросы</button></div>`)}
+
+function train(){return shell(`<div class="h1">Тренировка</div><div class="grid"><div class="card"><div class="h2">10 вопросов</div><p class="muted">Быстрая сессия.</p><button class="btn" onclick="startTrain(10)">Начать</button></div><div class="card"><div class="h2">20 вопросов</div><p class="muted">Стандартная цель.</p><button class="btn" onclick="startTrain(20)">Начать</button></div><div class="card"><div class="h2">50 вопросов</div><p class="muted">Длинная тренировка.</p><button class="btn" onclick="startTrain(50)">Начать</button></div><div class="card"><div class="h2">Только ошибки</div><p class="muted">${S.mistakes.length} накоплено.</p><button class="btn" onclick="startMistakes()">Повторить</button></div></div>
+<div class="card"><div class="h2">«Угадай знак»</div><p class="muted">Режим справочника знаков и визуального запоминания.</p><button class="btn secondary" onclick="go('signs')">Открыть</button></div>`)}
+function startTrain(n){S.session=shuffle([...questions]).slice(0,n);S.qi=0;S.exam=false;renderQuestion()}
+function startTopic(id){S.session=shuffle(questions.filter(q=>q.topic===id));S.qi=0;S.exam=false;renderQuestion()}
+function startMistakes(){let ids=new Set(S.mistakes);S.session=shuffle(questions.filter(q=>ids.has(q.id)));S.qi=0;S.exam=false;if(!S.session.length){alert("Ошибок пока нет.");return}renderQuestion()}
+function shuffle(a){return a.sort(()=>Math.random()-.5)}
+function renderQuestion(){let q=S.session[S.qi];if(!q){S.nav="home";save();render();return}
+let ans=S.currentAnswer, locked=ans!==undefined;document.getElementById("app").innerHTML=`<div class="app"><div class="top"><div class="container"><div class="row"><b>${S.exam?"Экзамен":"Тренировка"}</b><span>${S.qi+1} / ${S.session.length}</span></div></div></div><main class="container"><div class="card"><div class="badge">${esc(topics.find(t=>t[0]===q.topic)?.[1]||"Тема")}</div><h1 class="h1">${esc(q.q)}</h1><p class="muted">Выбери один вариант ответа.</p>${q.a.map((x,i)=>`<button class="choice ${locked&&i===q.c?"correct":""} ${locked&&ans===i&&ans!==q.c?"wrong":""} ${!locked&&ans===i?"selected":""}" ${locked?"disabled":""} onclick="choose(${i})">${esc(x)}</button>`).join("")}
+${!locked?`<button class="btn" style="width:100%;margin-top:8px" onclick="submitAnswer()">Ответить</button>`:`<div class="answer card"><span class="badge ${ans===q.c?"pill-ok":"pill-bad"}">${ans===q.c?"Верно":"Ошибка"}</span><h2 class="h2">${ans===q.c?"Отлично!":"Правильный ответ: "+esc(q.a[q.c])}</h2><p>${esc(q.e)}</p><p class="small muted">${esc(q.rule)}</p><button class="btn" onclick="nextQuestion()">Следующий вопрос</button></div>`}</div></main></div>`}
+function choose(i){S.currentAnswer=i;renderQuestion()}
+function submitAnswer(){let q=S.session[S.qi],ans=S.currentAnswer;if(ans===undefined)return;let ok=ans===q.c;S.total++;if(ok){S.correct++;S.streak++;S.mistakes=S.mistakes.filter(id=>id!==q.id);schedule(q.id,true)}else{S.streak=0;if(!S.mistakes.includes(q.id))S.mistakes.push(q.id);schedule(q.id,false)}S.answered[q.id]={topic:q.topic,correct:ok,at:Date.now()};save();renderQuestion()}
+function schedule(id,ok){let mins=ok?1440:10;S.reviews.push(Date.now()+mins*60000);if(ok){S.reviews.push(Date.now()+3*86400000);S.reviews.push(Date.now()+7*86400000)}}
+function nextQuestion(){delete S.currentAnswer;S.qi++;save();renderQuestion()}
+function exam(){return shell(`<div class="h1">Экзамен</div><div class="card"><div class="h2">Демонстрационный экзамен</div><p class="muted">Без подсказок и объяснений до завершения. Результат сохраняется локально.</p><button class="btn" onclick="startExam()">Начать экзамен</button></div>`)}
+function startExam(){S.session=shuffle([...questions]);S.qi=0;S.exam=true;S.examStarted=Date.now();delete S.currentAnswer;renderExamQuestion()}
+function renderExamQuestion(){let q=S.session[S.qi];if(!q){return finishExam()}let ans=S.examAnswers?.[q.id];document.getElementById("app").innerHTML=`<div class="app"><div class="top"><div class="container"><div class="row"><b>Экзамен</b><span>${S.qi+1}/${S.session.length}</span></div></div></div><main class="container"><div class="card"><div class="h1">${esc(q.q)}</div>${q.a.map((x,i)=>`<button class="choice ${ans===i?"selected":""}" onclick="examChoose(${i})">${esc(x)}</button>`).join("")}<button class="btn" style="width:100%;margin-top:10px" onclick="examNext()">${S.qi===S.session.length-1?"Завершить":"Далее"}</button></div></main></div>`}
+function examChoose(i){S.examAnswers=S.examAnswers||{};S.examAnswers[S.session[S.qi].id]=i;renderExamQuestion()}
+function examNext(){if(!S.examAnswers||S.examAnswers[S.session[S.qi].id]===undefined){alert("Выбери ответ.");return}S.qi++;renderExamQuestion()}
+function finishExam(){let results=S.session.map(q=>({q,ok:S.examAnswers[q.id]===q.c}));let c=results.filter(x=>x.ok).length;S.nav="home";delete S.examAnswers;save();document.getElementById("app").innerHTML=shell(`<div class="h1">Результаты экзамена</div><div class="hero"><div class="h1">${c} / ${results.length}</div><p>Точность: ${Math.round(c/results.length*100)}%</p></div><div class="card"><div class="h2">Разбор</div>${results.map(x=>`<div class="row" style="padding:10px 0;border-bottom:1px solid #eee"><span>${esc(x.q.q)}</span><span class="badge ${x.ok?"pill-ok":"pill-bad"}">${x.ok?"Верно":"Ошибка"}</span></div>`).join("")}</div><button class="btn" onclick="go('home')">На главную</button>`)}
+function signs(){return shell(`<div class="h1">Справочник знаков</div><p class="muted">Карточки ниже — демонстрационные. Реальные номера, изображения, зоны действия и исключения должны загружаться из актуальной официальной базы выбранной страны.</p>${[["🚸","Предупреждающий знак","Демо-категория"],["⛔","Запрещающий знак","Демо-категория"],["ℹ️","Информационный знак","Демо-категория"],["🅿️","Знак парковки","Демо-категория"]].map(s=>`<div class="card"><div class="sign">${s[0]}</div><div class="h2">${s[1]}</div><div class="muted">${s[2]}</div></div>`).join("")}`)}
+function profile(){return shell(`<div class="h1">Профиль</div><div class="card"><div class="h2">Настройки обучения</div><p><b>Страна:</b> ${esc(S.country)}</p><p><b>Уровень:</b> ${esc(S.level)}</p><p><b>Экзамен:</b> ${S.examDate||"не задан"}</p><p><b>Нормативная база:</b> ПДД РФ, постановление № 1090, редакция от 28.08.2026.</p><p class="small muted">Источник: КонсультантПлюс / официальный портал опубликования правовых актов.</p><button class="btn secondary" onclick="resetAll()">Сбросить демо-данные</button></div><div class="card"><div class="h2">Статистика</div><p>Решено: ${S.total}</p><p>Правильно: ${S.correct}</p><p>Ошибок в повторении: ${S.mistakes.length}</p></div><div class="card"><div class="h2">Админ-режим MVP</div><p class="muted">Просмотр структуры вопросной базы и готовность к CRUD. Полноценный серверный CRUD требует backend.</p><button class="btn secondary" onclick="go('admin')">Открыть админку</button></div>`)}
+function admin(){return shell(`<div class="h1">Админ-панель</div><div class="card"><div class="h2">Вопросы: ${questions.length}</div><table class="table"><tr><th>ID</th><th>Тема</th><th>Сложность</th><th>Источник</th></tr>${questions.map(q=>`<tr><td>${q.id}</td><td>${esc(topics.find(t=>t[0]===q.topic)?.[1])}</td><td>${q.d}</td><td class="small">${esc(q.rule)}</td></tr>`).join("")}</table></div>`)}
+function main(){let n=S.nav;if(n==="home")return home();if(n==="study")return study();if(n==="train")return train();if(n==="exam")return exam();if(n==="profile")return profile();if(n==="signs")return signs();if(n==="admin")return admin();if(n.startsWith("topic:"))return topicPage(n.slice(6));return home()}
+function resetAll(){if(confirm("Сбросить прогресс?")){S=fresh();render()}}
+render();
